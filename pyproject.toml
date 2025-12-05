@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bess_locator"
+version = "0.1.0"
+description = "Ferramenta de localização e ranking de projetos BESS"
+authors = [{name = "Frederico Sanches", email = "frederico@grupobcenergia.com.br"}]
+requires-python = ">=3.9"
+dependencies = [
+    "pandas",
+    "geopandas",
+    "folium",
+    "openpyxl"
+]
+
+[tool.setuptools.packages.find]
+where = ["."]  # Procura pacotes na raiz (vai encontrar o 'src')
+include = ["src*"]

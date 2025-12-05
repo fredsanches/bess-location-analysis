@@ -59,4 +59,4 @@ htmlcov/
 # --- Pasta de Dados (Segurança) ---
 outputs/
 data/
-epe_shapes/
+outputs/
