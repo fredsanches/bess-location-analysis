@@ -1,0 +1,62 @@
+# --- Python: O básico ---
+# Arquivos compilados (bytecodes) que o Python gera para rodar mais rápido
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Distribuição e Build (IMPORTANTE para o seu caso) ---
+# Pasta criada com o 'pip install -e .'
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- Ambientes Virtuais ---
+# Nunca enviamos as bibliotecas instaladas, apenas o código
+.venv
+venv/
+ENV/
+env/
+
+# --- IDEs e Editores ---
+# VS Code (Configurações locais do usuário)
+.vscode/
+# Exceto se você quiser compartilhar configurações de launch/tasks (opcional)
+# !.vscode/launch.json
+# !.vscode/tasks.json
+
+
+# --- Sistema Operacional (Lixo de sistema) ---
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# --- Data Science & Jupyter ---
+# Checkpoints do Jupyter Notebooks
+.ipynb_checkpoints
+
+# --- Ferramentas de Qualidade (Seus tools do toml) ---
+# Cache do Mypy (Verificação de tipos)
+.mypy_cache/
+# Cache do Pytest (se for usar testes no futuro)
+.pytest_cache/
+# Cobertura de testes
+.coverage
+htmlcov/
+
+# --- Arquivos de Dados (Segurança) ---
+*.xlsx
+*.xls
+*.csv
+*.db
+*.sqlite3
+
+# --- Pasta de Dados (Segurança) ---
+outputs/
+data/
+epe_shapes/
