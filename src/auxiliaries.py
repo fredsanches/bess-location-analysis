@@ -63,6 +63,7 @@ def load_projects_data(filename: str) -> pd.DataFrame:
     logging.info(f"\nCarregando projetos de: {file_path}")
     
     df = pd.read_excel(file_path, sheet_name="ÁREAS BC")
+    df = df.columns.str.strip().str.replace('\n', ' ')
     
     # assumir cenário comum: WGS 84 LAT/LON
     df['LAT'] = pd.to_numeric(df['LATITUDE'], errors="coerce")
@@ -130,8 +131,16 @@ def process_shape_layers(m: Map) -> None:
             
             if gdf.empty:
                 logging.warning(f'\ngdf para Goiás não encontrado em columas do shape ou recorte `.cx`')
+                
             if gdf.crs != 'EPSG:4326': gdf = gdf.to_crs('EPSG:4326')
             
+            # converting dates to string...
+            # EPE shapefiles might have columns date and folium tries to
+            # convert everything to JSON to build map in html...
+            # Folium doesn't know how to convert python date/time objects by yourself
+            for col in gdf.columns:
+                if pd.api.types.is_datetime64_any_dtype(gdf[col]):
+                    gdf[col] = gdf[col].astype(str)
             
             col_nome = next(
                 (col for col in ['NOME', 'NOM_LT', 'NOM_SE', 'nome'] 
