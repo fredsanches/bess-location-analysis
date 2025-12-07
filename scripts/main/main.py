@@ -1,20 +1,51 @@
-from pathlib import Path
-from folium.plugins import MousePosition, MarkerCluster
-
-import sys
-import pandas as pd
-import geopandas as gpd
 import folium
-import branca.colormap as cm
+import logging
+
+from folium.plugins import MousePosition
+
+from src.config import PATHS
+from src.auxiliaries import (
+    load_projects_data, process_shape_layers, add_bess_markers
+)
 
 
-# --- 1. SETUP DE IMPORTAÇÃO E INICIALIZAÇÃO ---
+def main() -> None:
+    
+    logging.info("*** Generating Estrategic Map BC Projects ***")
+    
+    try:
+        df_projects = load_projects_data("robustez_escoamento_-_alexandre.xlsx")
+    except Exception as e:
+        logging.critical(f"Fail to load sheet: {e}")
+        return
+    
+    logging.info("\nInicializating base map...")
+    # focusing on Goiás State
+    m = folium.Map(
+        location=[-16.0, -49.5],
+        zoom_start=7,
+        tiles="Cartodb Positron"
+    )
+    
+    logging.info("\nProcessing EPE shape files...")
+    # read configuration from src.config than draw lines/substations
+    process_shape_layers(m)
+    
+    logging.info("\nPloting map and generating popups...")
+    add_bess_markers(m, df_projects)
+    
+    # UI controls (finalization)
+    folium.LayerControl(collapsed=False).add_to(m)  # layer panel opened
+    MousePosition().add_to(m)   # shows lat/lon when hovering mouse
+    
+    logging.info("\nSaving the results...")
+    output_file = PATHS["outputs"] / "LRCAP_BC_map.html"
+    m.save(str(output_file))
+    
+    logging.info(f"\n*** SUCSESS ***")
+    logging.info(f"Map saved in:\n{output_file}")
 
-# Adiciona a raiz do projeto ao Python Path para importar 'src'
-# Estrutura: Root -> scripts -> main -> main.py
-CURRENT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = CURRENT_DIR.parents[1]
-sys.path.append(str(PROJECT_ROOT))
 
-# importa os módulos em /src
-from src.config import PATHS, SHAPE_FILES_CONFIG, ShapeLayerConfig
+
+if __name__ == "__main__":
+    main()

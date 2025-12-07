@@ -8,7 +8,7 @@ import os
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 PATHS = {
-    "shapes": ROOT_DIR / "data" / "epe_shapes",
+    "shapes": ROOT_DIR / "data" / "epe_shapes" / "goias",
     "xlsx": ROOT_DIR / "data" / "xlsx_data",
     "outputs": ROOT_DIR / "outputs"
 }
