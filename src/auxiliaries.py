@@ -63,7 +63,7 @@ def load_projects_data(filename: str) -> pd.DataFrame:
     logging.info(f"\nCarregando projetos de: {file_path}")
     
     df = pd.read_excel(file_path, sheet_name="ÁREAS BC")
-    df = df.columns.str.strip().str.replace('\n', ' ')
+    df.columns = df.columns.str.strip().str.replace('\n', ' ')
     
     # assumir cenário comum: WGS 84 LAT/LON
     df['LAT'] = pd.to_numeric(df['LATITUDE'], errors="coerce")
@@ -142,16 +142,30 @@ def process_shape_layers(m: Map) -> None:
                 if pd.api.types.is_datetime64_any_dtype(gdf[col]):
                     gdf[col] = gdf[col].astype(str)
             
+            # search for names, voltages and concessions (shape columns)
+            possible_names = ['Nome', 'NOME', 'NOM_LT', 'NOM_SE', 'nome', 'Name']
+            possible_voltages = ['Tensao', 'TENSAO', 'V_NOMINAL', 'VOLTAGEM', 'tensao']
+            # Novas variantes para Concessão
+            possible_concessions = ['Concession', 'CONCESSION', 'Empresa', 'EMPRESA', 'Proprietario']
+            
             col_nome = next(
-                (col for col in ['NOME', 'NOM_LT', 'NOM_SE', 'nome'] 
-                if col in gdf.columns), 'ID'
+                (col for col in possible_names if col in gdf.columns), gdf.columns[0]
             )
             col_tensao = next(
-                (col for col in ['TENSAO', 'V_NOMINAL', 'VOLTAGEM', 'tensao'] 
-                if col in gdf.columns), ''
+                (col for col in possible_voltages if col in gdf.columns), None
+            )
+            col_concessao = next(
+                (col for col in possible_concessions if col in gdf.columns), None
             )
             
-            tooltip_fields = [col_nome] + ([col_tensao] if col_tensao else [])
+            # Tooltip Fields
+            tooltip_fields = [col_nome]
+            if col_tensao: tooltip_fields.append(col_tensao)
+            if col_concessao: tooltip_fields.append(col_concessao)
+            
+            # Created a FeatureGroup for each layer.
+            # It forces substations appear inside the legend
+            layer_group = folium.FeatureGroup(name=layer_name)
             
             if config.type == 'line':
                 folium.GeoJson(
@@ -173,7 +187,7 @@ def process_shape_layers(m: Map) -> None:
                                                         },
                     tooltip=folium.GeoJsonTooltip(fields=tooltip_fields,
                                                   localize=True)
-                ).add_to(m)
+                ).add_to(layer_group)
             elif config.type == 'point':
                 for _, row in gdf.iterrows():
                     nome = row[col_nome] if col_nome in row else "SE"
@@ -187,7 +201,9 @@ def process_shape_layers(m: Map) -> None:
                         fill_opacity=1,
                         popup=f"<b>{layer_name}</b><br>{nome}<br>{tensao}",
                         tooltip=f"{nome} {tensao}"
-                    ).add_to(m)
+                    ).add_to(layer_group)
+                    
+            layer_group.add_to(m)   # add layer group to the final map
             
         except Exception as e:
             logging.error(f"Erro em {layer_name}: {e}")
@@ -202,35 +218,37 @@ def add_bess_markers(m: Map, df: pd.DataFrame) -> None:
         df (pd.DataFrame): _description_
     """
     
-    colormap = cm.LinearColormap(colors=['blue', 'yellow', 'red'], 
-                                 vmin=df['Score'].min(), vmax=df['Score'].max(), 
-                                 caption='Ranking BESS')
+    colormap = cm.LinearColormap(colors=['red', 'orange', 'yellow', 'green', 'darkgreen'], 
+                                 vmin=df['Score'].min(),
+                                 vmax=df['Score'].max(), 
+                                 caption='Ranking BESS (Atratividade)')
     colormap.add_to(m)
     
-    layer = folium.FeatureGroup(name="Projetos LRCAP 2025 Grupo BC")
+    layer = folium.FeatureGroup(name="Projetos BESS 2026 Grupo BC")
     
     for _, row in df.iterrows():
         # HTML atualizado para mostrar Min e Max
         html = f"""
-        <div style='font-family: sans-serif; width: 220px'>
-            <h4 style='margin-bottom:0'>{row['MUNICIPIO']}</h4>
+        <div style='font-family: sans-serif; width: 250px'>
+            <h4 style='margin-bottom:0; color:#2C3E50'>{row['MUNICIPIO']}</h4>
             <hr style='margin:5px 0'>
             <b>Potência:</b> {row['POTÊNCIA']} MW<br>
-            <b>Margem Escoamento:</b> {row['MARGEM_ESCOAMENTO']} MW<br>
+            <b>Margem (2028/29):</b> {row['MARGEM_ESCOAMENTO']} MW<br>
             <b>Robustez (Min-Max):</b> {row['ROBUSTEZ_MIN']:.3f} - {row['ROBUSTEZ_MAX']:.3f}<br>
             <br>
-            <b>Score Final:</b> {row['Score']:.3f}
+            <b style='font-size:14px'>Score Final: {row['Score']:.3f}</b>
         </div>
         """
         folium.CircleMarker(
             location=[row['LAT'], row['LON']],
             radius=10 + (row['POTÊNCIA'] / 5),
-            color=colormap(row['Score']),
+            color='black', # Borda preta fina para destacar no fundo claro
+            weight=1,      # Espessura da borda
             fill=True,
             fill_color=colormap(row['Score']),
             fill_opacity=0.8,
-            popup=folium.Popup(html, max_width=260),
-            tooltip=f"{row['MUNICIPIO']}"
+            popup=folium.Popup(html, max_width=280),
+            tooltip=f"{row['MUNICIPIO']} (Score: {row['Score']:.2f})"
         ).add_to(layer)
         
     layer.add_to(m)
