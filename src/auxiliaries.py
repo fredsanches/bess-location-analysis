@@ -75,22 +75,35 @@ def load_projects_data(filename: str) -> pd.DataFrame:
     # Aplica a função split_robustness e expande para duas colunas novas
     robustez_data = df[col_robustez].apply(split_robustness).tolist()
     df[['ROBUSTEZ_MIN', 'ROBUSTEZ_MAX']] = pd.DataFrame(robustez_data, index=df.index)
+    df['ROBUSTEZ_MED'] = (df['MARGEM_ESCOAMENTO'] + df['ROBUSTEZ_MIN']) / 2
     
     # Cálculo do Score e Métricas
-    df['MARGEM_ESCOAMENTO'] = pd.to_numeric(df['MARGEM DE ESCOAMENTO 2028/2029'], errors="coerce")
+    df['MARGEM_ESCOAMENTO'] = pd.to_numeric(df['MARGEM DE ESCOAMENTO 2028/2029'], errors="coerce").fillna(0)
     
     # Normalização
-    max_margem = df['MARGEM_ESCOAMENTO'].max()
-    max_robust = df['ROBUSTEZ_MAX'].max()   # -> normaliza pelo maior valor possível do dataset
+    # Score da Margem (Direto: Quanto maior, melhor)
+    # Proteção div/0 ao fazer -> else 1
+    max_margem = df['MARGEM_ESCOAMENTO'].max() if df['MARGEM_ESCOAMENTO'].max() > 0 else 1
+    score_margem = df['MARGEM_ESCOAMENTO'] / max_margem
     
-    # Proteção div/0
-    max_margem = max_margem if max_margem > 0 else 1
-    max_robust = max_robust if max_robust > 0 else 1
+    # Score da Robustez (Inverso: Quanto menor o SCR, melhor para BESS)
+    max_robust = df['ROBUSTEZ_MAX'].max() if df['ROBUSTEZ_MAX'].max() > 0 else 1    # -> normaliza pelo maior valor possível do dataset
+    
+    # Lógica: 1 - (Valor / Max). 
+    # Exemplo: Se Max=3.0 e Valor=1.0 -> 1 - 0.33 = 0.66 (Bom)
+    # Exemplo: Se Max=3.0 e Valor=3.0 -> 1 - 1.00 = 0.00 (Ruim)
+    # Proteção: Se Robustez for 0 (sem dados), Score fica 0.
+    df['SCORE_ROBUSTEZ'] = 0.0  # inicializado com 0
+    mask_valid = df['ROBUSTEZ_MED'] > 0
+    
+    if mask_valid.any():
+        vals = df.loc[mask_valid, 'ROBUSTEZ_MED']
+        # Aplica inversão apenas onde há dados de robustez
+        df.loc[mask_valid, 'SCORE_ROBUSTEZ'] = 1 - (vals / max_robust)
+    
     
     # Score ponderado (70% escoamento, 30% robustez mínima)
-    # utilizando a robustez minima (sendo conservador)
-    df['Score'] = (0.7 * (df['MARGEM_ESCOAMENTO'] / max_margem) + \
-                    0.3 * (df['ROBUSTEZ_MIN']) / max_robust)
+    df['Score'] = (0.7 * score_margem) + (0.3 * df['SCORE_ROBUSTEZ'])
     
     return df
 
