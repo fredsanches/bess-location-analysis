@@ -75,7 +75,7 @@ def load_projects_data(filename: str) -> pd.DataFrame:
     # Aplica a função split_robustness e expande para duas colunas novas
     robustez_data = df[col_robustez].apply(split_robustness).tolist()
     df[['ROBUSTEZ_MIN', 'ROBUSTEZ_MAX']] = pd.DataFrame(robustez_data, index=df.index)
-    df['ROBUSTEZ_MED'] = (df['MARGEM_ESCOAMENTO'] + df['ROBUSTEZ_MIN']) / 2
+    df['ROBUSTEZ_MED'] = (df['ROBUSTEZ_MIN'] + df['ROBUSTEZ_MAX']) / 2
     
     # Cálculo do Score e Métricas
     df['MARGEM_ESCOAMENTO'] = pd.to_numeric(df['MARGEM DE ESCOAMENTO 2028/2029'], errors="coerce").fillna(0)
